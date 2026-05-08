@@ -1,16 +1,68 @@
-# React + Vite
+# KickPass
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+KickPass is a digital career profile and scouting platform for amateur football (soccer) players.
 
-Currently, two official plugins are available:
+## What This App Includes
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Role-based authentication (Player, Coach, Scout) with JWT
+- Player profile creation and update
+- Public player search with filters
+- Public player profile pages with stats and match history
+- Coach match management (create, list, add players, delete)
+- React frontend with protected role-based routes
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Frontend: React + Vite + Tailwind CSS + Axios + React Router
+- Backend: ASP.NET Core Web API + Entity Framework Core + SQL Server
+- Auth: JWT Bearer tokens + BCrypt password hashing
 
-## Expanding the ESLint configuration
+## Project Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `KickPass.Api/KickPass.Api` - ASP.NET Core backend API
+- `src` - React frontend application
+
+## Run Locally
+
+### 1) Start the backend
+
+```powershell
+cd "KickPass.Api/KickPass.Api"
+dotnet run
+```
+
+API runs on `http://localhost:5000`.
+
+### 2) Start the frontend
+
+```powershell
+cd "."
+npm install
+npm run dev
+```
+
+Frontend runs on `http://localhost:5173`.
+
+## Core API Endpoints
+
+### Auth
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+
+### Players
+
+- `POST /api/players/profile`
+- `PUT /api/players/profile`
+- `GET /api/players/profile/me`
+- `GET /api/players/search`
+- `GET /api/players/{id}`
+
+### Matches
+
+- `POST /api/matches`
+- `POST /api/matches/{matchId}/players`
+- `GET /api/matches/{matchId}`
+- `GET /api/matches/my`
+- `DELETE /api/matches/{matchId}`
