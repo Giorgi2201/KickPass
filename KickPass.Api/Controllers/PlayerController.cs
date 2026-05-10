@@ -52,7 +52,23 @@ public class PlayerController : ControllerBase
         _context.PlayerProfiles.Add(profile);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetPlayerById), new { id = profile.Id }, profile);
+        return CreatedAtAction(
+            nameof(GetPlayerById),
+            new { id = profile.Id },
+            new
+            {
+                id = profile.Id,
+                userId = profile.UserId,
+                position = profile.Position,
+                dominantFoot = profile.DominantFoot,
+                age = profile.Age,
+                city = profile.City,
+                country = profile.Country,
+                bio = profile.Bio,
+                highlightUrl = profile.HighlightUrl,
+                avatarUrl = profile.AvatarUrl,
+                createdAt = profile.CreatedAt
+            });
     }
 
     [HttpPut("profile")]

@@ -18,9 +18,7 @@ This repository contains both the backend API and frontend application:
 
 ```
 kick-pass/
-├── KickPass.Api/              # ASP.NET Core Web API
-│   ├── KickPass.Api/          # API project source
-│   └── README.md              # API documentation
+├── KickPass.Api/              # ASP.NET Core Web API (project & docs)
 ├── src/                       # React frontend application
 │   ├── components/            # React components
 │   ├── pages/                 # Page components
@@ -42,7 +40,7 @@ To run the full application locally, you need to start both the backend API and 
 ### 1. Start the Backend API
 
 ```powershell
-cd KickPass.Api/KickPass.Api
+cd KickPass.Api
 
 # Copy and configure settings
 copy appsettings.example.json appsettings.json

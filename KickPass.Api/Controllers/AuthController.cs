@@ -12,10 +12,12 @@ namespace KickPass.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly AppDbContext _context;
 
-    public AuthController(AuthService authService)
+    public AuthController(AuthService authService, AppDbContext context)
     {
         _authService = authService;
+        _context = context;
     }
 
     [HttpPost("register")]
@@ -79,8 +81,7 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        var dbContext = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-        var user = await dbContext.Users.FindAsync(userId);
+        var user = await _context.Users.FindAsync(userId);
 
         if (user is null)
         {

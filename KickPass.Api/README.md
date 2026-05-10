@@ -34,7 +34,7 @@ cd KickPass/kick-pass
 ### 2. Navigate to the API Project
 
 ```bash
-cd KickPass.Api/KickPass.Api
+cd KickPass.Api
 ```
 
 ### 3. Configure Application Settings
