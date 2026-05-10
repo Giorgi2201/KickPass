@@ -1,0 +1,11 @@
+export function toLocalDateString(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function toISOStringLocal(dateString) {
+  return new Date(dateString + "T12:00:00").toISOString();
+}

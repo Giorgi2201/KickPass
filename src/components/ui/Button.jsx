@@ -5,6 +5,7 @@ function Button({
   variant = "primary",
   disabled = false,
   loading = false,
+  ariaLabel,
 }) {
   const baseClasses =
     "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-medium transition disabled:cursor-not-allowed disabled:opacity-60";
@@ -20,6 +21,9 @@ function Button({
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
+      aria-label={ariaLabel}
+      aria-busy={loading}
+      aria-disabled={disabled || loading}
       className={`${baseClasses} ${variantClasses[variant]}`}
     >
       {loading && (

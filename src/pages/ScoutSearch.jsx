@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
+import useDebounce from "../hooks/useDebounce";
 import { useNavigate } from "react-router-dom";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import Avatar from "../components/ui/Avatar";
 import Input from "../components/ui/Input";
+import Pagination from "../components/ui/Pagination";
+import PlayerCardSkeleton from "../components/ui/PlayerCardSkeleton";
 import api from "../services/api";
+import { getErrorMessage } from "../utils/errors";
 
 const initialFilters = {
   position: "",
@@ -15,29 +20,48 @@ const initialFilters = {
   maxAge: "",
 };
 
+const PAGE_SIZE = 12;
+
 function ScoutSearch() {
   const navigate = useNavigate();
-  const [players, setPlayers] = useState([]);
+  const [allResults, setAllResults] = useState([]);
   const [filters, setFilters] = useState(initialFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const debouncedFilters = useDebounce(filters, 500);
 
-  const loadPlayers = async (params = {}) => {
+  const loadPlayers = async (params) => {
     setLoading(true);
     setError("");
     try {
       const response = await api.get("/players/search", { params });
-      setPlayers(response.data);
+      setAllResults(response.data);
+      setCurrentPage(1);
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Failed to load players.");
+      setError(getErrorMessage(requestError, "Failed to load players."));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadPlayers();
-  }, []);
+    if (debouncedFilters !== initialFilters) {
+      const params = Object.fromEntries(
+        Object.entries(debouncedFilters).filter(([, value]) => value)
+      );
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadPlayers(params);
+    }
+  }, [debouncedFilters]);
+
+  const totalPages = Math.ceil(allResults.length / PAGE_SIZE);
+  const paginatedResults = allResults.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, allResults.length);
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
@@ -54,14 +78,14 @@ function ScoutSearch() {
     await loadPlayers(params);
   };
 
-  const handleClear = async () => {
+  const handleClear = () => {
     setFilters(initialFilters);
-    await loadPlayers();
+    setCurrentPage(1);
   };
 
   return (
     <div className="space-y-6">
-      <Card className="space-y-4">
+      <Card className="space-y-4" aria-label="Player search filters">
         <h1 className="text-2xl font-semibold text-white">Scout Search</h1>
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-2">
@@ -145,25 +169,28 @@ function ScoutSearch() {
         {error && <p className="text-sm text-red-400">{error}</p>}
       </Card>
 
-      {!loading && <p className="text-sm text-gray-300">Showing {players.length} players</p>}
+      {!loading && (
+        <p className="text-sm text-gray-300" aria-live="polite" aria-atomic="true">
+          Showing {start}-{end} of {allResults.length} players
+        </p>
+      )}
 
       {loading ? (
-        <Card>
-          <p className="text-gray-300">Loading players...</p>
-        </Card>
-      ) : players.length === 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <PlayerCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : allResults.length === 0 ? (
         <Card>
           <p className="text-gray-300">No players found matching your search</p>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {players.map((player) => (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {paginatedResults.map((player) => (
             <Card key={player.id} className="space-y-3">
-              <img
-                src={player.avatarUrl || "https://placehold.co/100x100?text=%E2%9A%BD"}
-                alt={player.fullName}
-                className="h-20 w-20 rounded-full border border-gray-700 object-cover"
-              />
+              <Avatar url={player.avatarUrl} name={player.fullName} size={80} />
               <h2 className="text-lg font-semibold text-white">{player.fullName}</h2>
               <div className="flex flex-wrap gap-2">
                 <Badge label={player.position} color="green" />
@@ -183,8 +210,18 @@ function ScoutSearch() {
                 View Profile
               </Button>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

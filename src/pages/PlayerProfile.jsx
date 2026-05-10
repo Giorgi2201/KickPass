@@ -3,8 +3,17 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
-import { useAuth } from "../hooks/useAuth";
+import ImageUpload from "../components/ui/ImageUpload";
+import Avatar from "../components/ui/Avatar";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import api from "../services/api";
+import { getErrorMessage } from "../utils/errors";
+
+function isValidVideoUrl(url) {
+  if (!url) return false;
+  return /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)/.test(url);
+}
 
 const initialForm = {
   position: "Goalkeeper",
@@ -19,12 +28,12 @@ const initialForm = {
 
 function PlayerProfile() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [formData, setFormData] = useState(initialForm);
   const [profileExists, setProfileExists] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
   const [generalError, setGeneralError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -35,24 +44,22 @@ function PlayerProfile() {
       const response = await api.get("/players/profile/me");
       const profile = response.data;
       setProfileData(profile);
-      setProfileExists(true);
       setFormData({
-        position: profile.position || "Goalkeeper",
-        dominantFoot: profile.dominantFoot || "Right",
-        age: profile.age ?? "",
-        city: profile.city || "",
-        country: profile.country || "",
-        bio: profile.bio || "",
-        highlightUrl: profile.highlightUrl || "",
-        avatarUrl: profile.avatarUrl || "",
+        position: profile.position || initialForm.position,
+        dominantFoot: profile.dominantFoot || initialForm.dominantFoot,
+        age: profile.age?.toString() || initialForm.age,
+        city: profile.city || initialForm.city,
+        country: profile.country || initialForm.country,
+        bio: profile.bio || initialForm.bio,
+        highlightUrl: profile.highlightUrl || initialForm.highlightUrl,
+        avatarUrl: profile.avatarUrl || initialForm.avatarUrl,
       });
+      setProfileExists(true);
     } catch (error) {
       if (error.response?.status === 404) {
         setProfileExists(false);
-        setProfileData(null);
-        setFormData(initialForm);
       } else {
-        setGeneralError("Failed to load profile.");
+        setGeneralError(getErrorMessage(error, "Failed to load profile."));
       }
     } finally {
       setLoading(false);
@@ -60,6 +67,7 @@ function PlayerProfile() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProfile();
   }, []);
 
@@ -67,7 +75,6 @@ function PlayerProfile() {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setFieldErrors((prev) => ({ ...prev, [name]: "" }));
-    setMessage("");
     setGeneralError("");
   };
 
@@ -82,13 +89,12 @@ function PlayerProfile() {
       setFieldErrors(mapped);
       return;
     }
-    setGeneralError(error.response?.data?.message || "Failed to save profile.");
+    setGeneralError(getErrorMessage(error, "Failed to save profile."));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitting(true);
-    setMessage("");
     setGeneralError("");
     setFieldErrors({});
 
@@ -99,12 +105,12 @@ function PlayerProfile() {
       };
       if (!profileExists) {
         await api.post("/players/profile", payload);
-        setMessage("Profile created!");
+        addToast("Profile created!", "success");
         await loadProfile();
       } else {
         const response = await api.put("/players/profile", payload);
         setProfileData(response.data);
-        setMessage("Profile updated!");
+        addToast("Profile updated!", "success");
       }
     } catch (error) {
       mapApiErrors(error);
@@ -194,6 +200,7 @@ function PlayerProfile() {
           <Input
             label="City"
             name="city"
+            autoComplete="address-level2"
             value={formData.city}
             onChange={handleChange}
             required
@@ -203,6 +210,7 @@ function PlayerProfile() {
           <Input
             label="Country"
             name="country"
+            autoComplete="country-name"
             value={formData.country}
             onChange={handleChange}
             required
@@ -235,13 +243,12 @@ function PlayerProfile() {
             error={fieldErrors.highlightUrl}
           />
 
-          <Input
-            label="Avatar URL"
-            name="avatarUrl"
-            value={formData.avatarUrl}
-            onChange={handleChange}
-            placeholder="Link to your profile photo"
-            error={fieldErrors.avatarUrl}
+          <ImageUpload
+            label="Profile Photo"
+            currentUrl={formData.avatarUrl}
+            onUpload={(url) =>
+              setFormData((prev) => ({ ...prev, avatarUrl: url }))
+            }
           />
 
           <Button type="submit" variant="primary" loading={submitting}>
@@ -249,7 +256,6 @@ function PlayerProfile() {
           </Button>
         </form>
 
-        {message && <p className="mt-4 text-sm text-green-400">{message}</p>}
         {generalError && <p className="mt-4 text-sm text-red-400">{generalError}</p>}
       </Card>
 
@@ -257,11 +263,7 @@ function PlayerProfile() {
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-white">Profile Preview</h2>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <img
-              src={profileData?.avatarUrl || "https://placehold.co/120x120?text=%E2%9A%BD"}
-              alt={`${user?.fullName || "Player"} avatar`}
-              className="h-24 w-24 rounded-full border border-gray-700 object-cover"
-            />
+            <Avatar url={profileData?.avatarUrl} name={user?.fullName || "Player"} size={96} />
             <div className="space-y-2">
               <h3 className="text-2xl font-semibold text-white">{user?.fullName || "Player"}</h3>
               <Badge label={formData.position} color="green" />
@@ -269,15 +271,17 @@ function PlayerProfile() {
                 {formData.city}, {formData.country}
               </p>
               {formData.bio && <p className="text-sm text-gray-300">{formData.bio}</p>}
-              {formData.highlightUrl && (
+              {isValidVideoUrl(formData.highlightUrl) ? (
                 <a
                   href={formData.highlightUrl}
                   target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-[#16a34a] underline"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-[#16a34a] underline"
                 >
-                  Watch highlight video
+                  ▶ Watch highlight video
                 </a>
+              ) : (
+                <p className="text-sm text-gray-500">No highlight video added</p>
               )}
             </div>
           </div>

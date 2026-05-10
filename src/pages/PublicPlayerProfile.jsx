@@ -3,7 +3,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import Avatar from "../components/ui/Avatar";
+import { Skeleton } from "../components/ui/Skeleton";
 import api from "../services/api";
+import { getErrorMessage } from "../utils/errors";
+
+function isValidVideoUrl(url) {
+  if (!url) return false;
+  return /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)/.test(url);
+}
 
 function PublicPlayerProfile() {
   const { id } = useParams();
@@ -25,7 +33,7 @@ function PublicPlayerProfile() {
         if (requestError.response?.status === 404) {
           setNotFound(true);
         } else {
-          setError(requestError.response?.data?.message || "Failed to load player profile.");
+          setError(getErrorMessage(requestError, "Failed to load player profile."));
         }
       } finally {
         setLoading(false);
@@ -50,9 +58,51 @@ function PublicPlayerProfile() {
 
   if (loading) {
     return (
-      <Card>
-        <p className="text-gray-300">Loading player profile...</p>
-      </Card>
+      <div className="space-y-6">
+        <Button variant="secondary" onClick={() => navigate(-1)}>
+          Back
+        </Button>
+
+        {/* Profile Header Skeleton */}
+        <Card>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <Skeleton width="7rem" height="7rem" rounded="rounded-full" />
+            <div className="space-y-3 flex-1">
+              <Skeleton width="60%" height="2rem" />
+              <div className="flex gap-2">
+                <Skeleton width="5rem" height="1.5rem" rounded="rounded-full" />
+                <Skeleton width="5rem" height="1.5rem" rounded="rounded-full" />
+              </div>
+              <Skeleton width="40%" />
+              <Skeleton width="80%" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <Skeleton width="50%" className="mb-2" />
+              <Skeleton width="3rem" height="2rem" />
+            </Card>
+          ))}
+        </div>
+
+        {/* Match History Skeleton */}
+        <Card>
+          <Skeleton width="40%" height="1.75rem" className="mb-4" />
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="rounded-md border border-gray-800 bg-black p-4">
+                <Skeleton width="70%" className="mb-2" />
+                <Skeleton width="40%" className="mb-2" />
+                <Skeleton width="60%" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
     );
   }
 
@@ -90,11 +140,7 @@ function PublicPlayerProfile() {
 
       <Card>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <img
-            src={profile.avatarUrl || "https://placehold.co/140x140?text=%E2%9A%BD"}
-            alt={profile.fullName}
-            className="h-28 w-28 rounded-full border border-gray-700 object-cover"
-          />
+          <Avatar url={profile.avatarUrl} name={profile.fullName} size={112} />
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold text-white">{profile.fullName}</h1>
             <div className="flex flex-wrap gap-2">
@@ -105,14 +151,14 @@ function PublicPlayerProfile() {
               {profile.city}, {profile.country}
             </p>
             {profile.bio && <p className="text-sm text-gray-300">{profile.bio}</p>}
-            {profile.highlightUrl && (
+            {isValidVideoUrl(profile.highlightUrl) && (
               <a
                 href={profile.highlightUrl}
                 target="_blank"
-                rel="noreferrer"
-                className="text-sm text-[#16a34a] underline"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-[#16a34a] underline"
               >
-                Watch highlight video
+                ▶ Watch highlight video
               </a>
             )}
           </div>

@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import Card from "../components/ui/Card";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
+import { Skeleton } from "../components/ui/Skeleton";
 import api from "../services/api";
 import { COACH, PLAYER, SCOUT } from "../utils/roles";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../context/AuthContext";
 
 function Dashboard() {
   const { user } = useAuth();
@@ -13,12 +14,14 @@ function Dashboard() {
   const [playerProfile, setPlayerProfile] = useState(null);
   const [playerProfileMissing, setPlayerProfileMissing] = useState(false);
   const [coachMatchesCount, setCoachMatchesCount] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const role = freshUser?.role || user?.role;
 
   useEffect(() => {
     const loadDashboardData = async () => {
+      setLoading(true);
       setError("");
       try {
         const meResponse = await api.get("/auth/me");
@@ -49,6 +52,8 @@ function Dashboard() {
         }
       } catch {
         setError("Failed to load dashboard data.");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -119,7 +124,16 @@ function Dashboard() {
 
           <Card className="border-gray-800 transition hover:border-[#16a34a]">
             <h2 className="text-xl font-semibold text-white">My Stats</h2>
-            {playerProfileMissing ? (
+            {loading ? (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="rounded-md border border-gray-800 bg-black p-3">
+                    <Skeleton width="60%" className="mb-1" />
+                    <Skeleton width="2rem" height="1.5rem" />
+                  </div>
+                ))}
+              </div>
+            ) : playerProfileMissing ? (
               <div className="mt-3 space-y-3">
                 <p className="text-sm text-gray-300">
                   Complete your profile to see stats
@@ -175,7 +189,11 @@ function Dashboard() {
           <Card className="border-gray-800 transition hover:border-[#16a34a]">
             <h2 className="text-xl font-semibold text-white">Stats</h2>
             <p className="mt-2 text-sm text-gray-400">Total matches created</p>
-            <p className="mt-1 text-3xl font-bold text-white">{coachMatchesCount}</p>
+            {loading ? (
+              <Skeleton width="4rem" height="2.5rem" className="mt-1" />
+            ) : (
+              <p className="mt-1 text-3xl font-bold text-white">{coachMatchesCount}</p>
+            )}
           </Card>
         </div>
       )}

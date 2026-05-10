@@ -3,7 +3,12 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
+import PlayerSearchInput from "../components/ui/PlayerSearchInput";
+import { SkeletonCard } from "../components/ui/Skeleton";
 import api from "../services/api";
+import { toISOStringLocal, toLocalDateString } from "../utils/dates";
+import { getErrorMessage } from "../utils/errors";
+import { useToast } from "../context/ToastContext";
 
 const initialMatchForm = {
   homeTeam: "",
@@ -15,7 +20,6 @@ const initialMatchForm = {
 };
 
 const initialPlayerForm = {
-  playerProfileId: "",
   goals: 0,
   assists: 0,
   yellowCard: false,
@@ -25,20 +29,18 @@ const initialPlayerForm = {
 };
 
 function CoachDashboard() {
+  const { addToast } = useToast();
   const [matchForm, setMatchForm] = useState(initialMatchForm);
   const [matches, setMatches] = useState([]);
   const [expandedMatchId, setExpandedMatchId] = useState(null);
   const [matchDetails, setMatchDetails] = useState({});
   const [playerForms, setPlayerForms] = useState({});
+  const [selectedPlayers, setSelectedPlayers] = useState({});
   const [createLoading, setCreateLoading] = useState(false);
   const [listLoading, setListLoading] = useState(true);
   const [addLoadingMatchId, setAddLoadingMatchId] = useState(null);
   const [deleteLoadingMatchId, setDeleteLoadingMatchId] = useState(null);
-  const [createError, setCreateError] = useState("");
-  const [createSuccess, setCreateSuccess] = useState("");
   const [listError, setListError] = useState("");
-  const [detailErrors, setDetailErrors] = useState({});
-  const [addErrors, setAddErrors] = useState({});
 
   const loadMatches = async () => {
     setListLoading(true);
@@ -47,33 +49,31 @@ function CoachDashboard() {
       const response = await api.get("/matches/my");
       setMatches(response.data);
     } catch (error) {
-      setListError(error.response?.data?.message || "Failed to load matches.");
+      addToast(getErrorMessage(error, "Failed to load matches."), "error");
     } finally {
       setListLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMatches();
   }, []);
 
   const handleMatchFormChange = (event) => {
     const { name, value } = event.target;
     setMatchForm((prev) => ({ ...prev, [name]: value }));
-    setCreateError("");
-    setCreateSuccess("");
   };
 
   const handleCreateMatch = async (event) => {
     event.preventDefault();
     setCreateLoading(true);
-    setCreateError("");
-    setCreateSuccess("");
     try {
       const payload = {
         ...matchForm,
         homeScore: Number(matchForm.homeScore),
         awayScore: Number(matchForm.awayScore),
+        matchDate: toISOStringLocal(matchForm.matchDate),
       };
       const response = await api.post("/matches", payload);
       const created = response.data;
@@ -82,9 +82,9 @@ function CoachDashboard() {
         ...prev,
       ]);
       setMatchForm(initialMatchForm);
-      setCreateSuccess("Match created successfully.");
+      addToast("Match created successfully.", "success");
     } catch (error) {
-      setCreateError(error.response?.data?.message || "Failed to create match.");
+      addToast(getErrorMessage(error, "Failed to create match."), "error");
     } finally {
       setCreateLoading(false);
     }
@@ -97,7 +97,6 @@ function CoachDashboard() {
     }
 
     setExpandedMatchId(matchId);
-    setDetailErrors((prev) => ({ ...prev, [matchId]: "" }));
 
     try {
       const response = await api.get(`/matches/${matchId}`);
@@ -107,10 +106,7 @@ function CoachDashboard() {
         [matchId]: prev[matchId] || initialPlayerForm,
       }));
     } catch (error) {
-      setDetailErrors((prev) => ({
-        ...prev,
-        [matchId]: error.response?.data?.message || "Failed to load match details.",
-      }));
+      addToast(getErrorMessage(error, "Failed to load match details."), "error");
     }
   };
 
@@ -129,7 +125,7 @@ function CoachDashboard() {
         setExpandedMatchId(null);
       }
     } catch (error) {
-      setListError(error.response?.data?.message || "Failed to delete match.");
+      addToast(getErrorMessage(error, "Failed to delete match."), "error");
     } finally {
       setDeleteLoadingMatchId(null);
     }
@@ -144,19 +140,27 @@ function CoachDashboard() {
         [name]: type === "checkbox" ? checked : value,
       },
     }));
-    setAddErrors((prev) => ({ ...prev, [matchId]: "" }));
+  };
+
+  const handlePlayerSelect = (matchId, player) => {
+    setSelectedPlayers((prev) => ({ ...prev, [matchId]: player }));
   };
 
   const handleAddPlayer = async (event, matchId) => {
     event.preventDefault();
     const form = playerForms[matchId] || initialPlayerForm;
+    const selectedPlayer = selectedPlayers[matchId];
+
+    if (!selectedPlayer) {
+      addToast("Please select a player", "error");
+      return;
+    }
 
     setAddLoadingMatchId(matchId);
-    setAddErrors((prev) => ({ ...prev, [matchId]: "" }));
 
     try {
       await api.post(`/matches/${matchId}/players`, {
-        playerProfileId: Number(form.playerProfileId),
+        playerProfileId: selectedPlayer.id,
         goals: Number(form.goals),
         assists: Number(form.assists),
         yellowCard: Boolean(form.yellowCard),
@@ -171,12 +175,10 @@ function CoachDashboard() {
         ...prev,
         [matchId]: initialPlayerForm,
       }));
+      setSelectedPlayers((prev) => ({ ...prev, [matchId]: null }));
       await loadMatches();
     } catch (error) {
-      setAddErrors((prev) => ({
-        ...prev,
-        [matchId]: error.response?.data?.message || "Failed to add player.",
-      }));
+      addToast(getErrorMessage(error, "Failed to add player."), "error");
     } finally {
       setAddLoadingMatchId(null);
     }
@@ -238,16 +240,16 @@ function CoachDashboard() {
             Create Match
           </Button>
         </form>
-        {createSuccess && <p className="mt-3 text-sm text-green-400">{createSuccess}</p>}
-        {createError && <p className="mt-3 text-sm text-red-400">{createError}</p>}
       </Card>
 
       <div className="space-y-4">
         <h2 className="text-2xl font-semibold text-white">My Matches</h2>
         {listLoading && (
-          <Card>
-            <p className="text-gray-300">Loading matches...</p>
-          </Card>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
         )}
         {!listLoading && matches.length === 0 && (
           <Card>
@@ -263,7 +265,7 @@ function CoachDashboard() {
                 {match.homeTeam} {match.homeScore} - {match.awayScore} {match.awayTeam}
               </h3>
               <p className="text-sm text-gray-300">
-                {new Date(match.matchDate).toLocaleDateString()}{" "}
+                {toLocalDateString(match.matchDate)}{" "}
                 {match.location ? `• ${match.location}` : ""}
               </p>
             </div>
@@ -284,9 +286,6 @@ function CoachDashboard() {
 
             {expandedMatchId === match.id && (
               <div className="space-y-4 border-t border-gray-800 pt-4">
-                {detailErrors[match.id] && (
-                  <p className="text-sm text-red-400">{detailErrors[match.id]}</p>
-                )}
                 <div className="space-y-2">
                   <h4 className="text-lg font-medium text-white">Players in Match</h4>
                   {(matchDetails[match.id]?.players || []).length === 0 ? (
@@ -317,13 +316,9 @@ function CoachDashboard() {
                   className="space-y-3 rounded-md border border-gray-800 bg-black p-4"
                 >
                   <h5 className="font-medium text-white">Add Player</h5>
-                  <Input
-                    label="Player Profile ID"
-                    name="playerProfileId"
-                    type="number"
-                    value={playerForms[match.id]?.playerProfileId ?? ""}
-                    onChange={(event) => handlePlayerFormChange(match.id, event)}
-                    required
+                  <PlayerSearchInput
+                    onSelect={(player) => handlePlayerSelect(match.id, player)}
+                    selectedPlayer={selectedPlayers[match.id]}
                   />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Input
@@ -393,9 +388,6 @@ function CoachDashboard() {
                   >
                     Add to Match
                   </Button>
-                  {addErrors[match.id] && (
-                    <p className="text-sm text-red-400">{addErrors[match.id]}</p>
-                  )}
                 </form>
               </div>
             )}
