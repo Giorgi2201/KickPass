@@ -46,7 +46,8 @@ public class PlayerController : ControllerBase
             Country = dto.Country,
             Bio = dto.Bio,
             HighlightUrl = dto.HighlightUrl,
-            AvatarUrl = dto.AvatarUrl
+            AvatarUrl = dto.AvatarUrl,
+            IsAvailable = dto.IsAvailable
         };
 
         _context.PlayerProfiles.Add(profile);
@@ -95,6 +96,7 @@ public class PlayerController : ControllerBase
         profile.Bio = dto.Bio;
         profile.HighlightUrl = dto.HighlightUrl;
         profile.AvatarUrl = dto.AvatarUrl;
+        profile.IsAvailable = dto.IsAvailable;
 
         await _context.SaveChangesAsync();
 
@@ -115,8 +117,9 @@ public class PlayerController : ControllerBase
     }
 
     [HttpGet("search")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Scout,Coach")]
     public async Task<IActionResult> Search(
+        [FromQuery] string? name,
         [FromQuery] string? position,
         [FromQuery] string? dominantFoot,
         [FromQuery] string? city,
@@ -127,6 +130,13 @@ public class PlayerController : ControllerBase
         var query = _context.PlayerProfiles
             .Include(pp => pp.User)
             .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            var value = name.ToLower();
+            query = query.Where(pp =>
+                pp.User.FullName.ToLower().Contains(value));
+        }
 
         if (!string.IsNullOrWhiteSpace(position))
         {
@@ -162,6 +172,8 @@ public class PlayerController : ControllerBase
             query = query.Where(pp => pp.Age <= maxAge.Value);
         }
 
+        query = query.Where(pp => pp.IsAvailable == true);
+
         var profiles = await query
             .Select(pp => new
             {
@@ -174,7 +186,8 @@ public class PlayerController : ControllerBase
                 country = pp.Country,
                 bio = pp.Bio,
                 highlightUrl = pp.HighlightUrl,
-                avatarUrl = pp.AvatarUrl
+                avatarUrl = pp.AvatarUrl,
+                isAvailable = pp.IsAvailable
             })
             .ToListAsync();
 
@@ -216,6 +229,7 @@ public class PlayerController : ControllerBase
             bio = profile.Bio,
             highlightUrl = profile.HighlightUrl,
             avatarUrl = profile.AvatarUrl,
+            isAvailable = profile.IsAvailable,
             createdAt = profile.CreatedAt,
             totalGoals,
             totalAssists,

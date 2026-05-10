@@ -7,14 +7,22 @@ import { Skeleton } from "../components/ui/Skeleton";
 import api from "../services/api";
 import { COACH, PLAYER, SCOUT } from "../utils/roles";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
+import { getErrorMessage } from "../utils/errors";
 
 function Dashboard() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [freshUser, setFreshUser] = useState(user);
   const [playerProfile, setPlayerProfile] = useState(null);
   const [playerProfileMissing, setPlayerProfileMissing] = useState(false);
   const [coachMatchesCount, setCoachMatchesCount] = useState(0);
+  const [uniquePlayersCount, setUniquePlayersCount] = useState(0);
+  const [totalPlayersCount, setTotalPlayersCount] = useState(0);
+  const [availablePlayersCount, setAvailablePlayersCount] = useState(0);
+  const [positionBreakdown, setPositionBreakdown] = useState({});
   const [loading, setLoading] = useState(true);
+  const [togglingAvailability, setTogglingAvailability] = useState(false);
   const [error, setError] = useState("");
 
   const role = freshUser?.role || user?.role;
@@ -46,9 +54,40 @@ function Dashboard() {
         if (meResponse.data.role === COACH) {
           try {
             const matchesResponse = await api.get("/matches/my");
-            setCoachMatchesCount(matchesResponse.data.length);
+            const matches = matchesResponse.data;
+            setCoachMatchesCount(matches.length);
+
+            if (matches.length === 0) {
+              setUniquePlayersCount(0);
+            } else {
+              const matchDetails = await Promise.all(
+                matches.map((m) => api.get(`/matches/${m.id}`))
+              );
+              const allPlayerIds = matchDetails.flatMap((res) =>
+                res.data.players.map((p) => p.playerProfileId)
+              );
+              const uniqueCount = new Set(allPlayerIds).size;
+              setUniquePlayersCount(uniqueCount);
+            }
           } catch {
             setError("Failed to load coach stats.");
+          }
+        }
+
+        if (meResponse.data.role === SCOUT) {
+          try {
+            const playersResponse = await api.get("/players/search");
+            const players = playersResponse.data;
+            setTotalPlayersCount(players.length);
+            setAvailablePlayersCount(players.length);
+
+            const breakdown = players.reduce((acc, player) => {
+              acc[player.position] = (acc[player.position] || 0) + 1;
+              return acc;
+            }, {});
+            setPositionBreakdown(breakdown);
+          } catch {
+            setError("Failed to load scout stats.");
           }
         }
       } catch {
@@ -95,6 +134,38 @@ function Dashboard() {
     return { totalMatches, totalGoals, totalAssists, avgRating };
   }, [playerProfile]);
 
+  const handleToggleAvailability = async () => {
+    if (!playerProfile) return;
+
+    setTogglingAvailability(true);
+    try {
+      await api.put("/players/profile", {
+        position: playerProfile.position,
+        dominantFoot: playerProfile.dominantFoot,
+        age: playerProfile.age,
+        city: playerProfile.city,
+        country: playerProfile.country,
+        bio: playerProfile.bio,
+        highlightUrl: playerProfile.highlightUrl,
+        avatarUrl: playerProfile.avatarUrl,
+        isAvailable: !playerProfile.isAvailable,
+      });
+
+      setPlayerProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              isAvailable: !prev.isAvailable,
+            }
+          : prev
+      );
+    } catch (toggleError) {
+      addToast(getErrorMessage(toggleError), "error");
+    } finally {
+      setTogglingAvailability(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -116,11 +187,44 @@ function Dashboard() {
           </Card>
 
           <Card className="border-gray-800 transition hover:border-[#16a34a]">
-            <h2 className="text-xl font-semibold text-white">Find Scouts</h2>
-            <p className="mt-2 text-sm text-gray-300">Browse scouts and opportunities.</p>
-            <Link to="/scout" className="mt-4 inline-block text-[#16a34a]">
-              Explore search
-            </Link>
+            <h2 className="text-xl font-semibold text-white">My Visibility</h2>
+            {loading ? (
+              <div className="mt-3 space-y-3">
+                <Skeleton width="10rem" height="1.75rem" />
+                <Skeleton width="7rem" height="2.5rem" />
+              </div>
+            ) : playerProfileMissing ? (
+              <div className="mt-3 space-y-3">
+                <p className="text-sm text-gray-300">
+                  Create your profile first to manage visibility.
+                </p>
+                <Link to="/profile" className="inline-block text-[#16a34a]">
+                  Go to profile
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {playerProfile?.isAvailable ? (
+                  <Badge label="Open to Opportunities" color="green" />
+                ) : (
+                  <Badge label="Not Available" color="gray" />
+                )}
+
+                <p className="text-sm text-gray-300">
+                  {playerProfile?.isAvailable
+                    ? "Scouts can currently find your profile in search results."
+                    : "Your profile is hidden from scout searches."}
+                </p>
+
+                <Button
+                  variant={playerProfile?.isAvailable ? "danger" : "primary"}
+                  onClick={handleToggleAvailability}
+                  loading={togglingAvailability}
+                >
+                  {playerProfile?.isAvailable ? "Go Unavailable" : "Go Available"}
+                </Button>
+              </div>
+            )}
           </Card>
 
           <Card className="border-gray-800 transition hover:border-[#16a34a]">
@@ -170,31 +274,37 @@ function Dashboard() {
       {role === COACH && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-gray-800 transition hover:border-[#16a34a]">
-            <h2 className="text-xl font-semibold text-white">Create Match</h2>
+            <h2 className="text-xl font-semibold text-white">Match Center</h2>
             <p className="mt-2 text-sm text-gray-300">
-              Record a new match and assign player stats.
+              Create matches, log player stats and manage your full match history.
             </p>
             <Link to="/coach" className="mt-4 inline-block text-[#16a34a]">
-              Open coach dashboard
+              Open Match Center
             </Link>
           </Card>
+
           <Card className="border-gray-800 transition hover:border-[#16a34a]">
-            <h2 className="text-xl font-semibold text-white">My Matches</h2>
-            <p className="mt-2 text-sm text-gray-300">
-              View, edit, and manage your created matches.
-            </p>
-            <Link to="/coach" className="mt-4 inline-block text-[#16a34a]">
-              View matches
-            </Link>
-          </Card>
-          <Card className="border-gray-800 transition hover:border-[#16a34a]">
-            <h2 className="text-xl font-semibold text-white">Stats</h2>
-            <p className="mt-2 text-sm text-gray-400">Total matches created</p>
+            <h2 className="text-xl font-semibold text-white">Total Matches</h2>
+            <p className="mt-2 text-sm text-gray-400">Matches you have recorded on KickPass.</p>
             {loading ? (
               <Skeleton width="4rem" height="2.5rem" className="mt-1" />
             ) : (
-              <p className="mt-1 text-3xl font-bold text-white">{coachMatchesCount}</p>
+              <p className="mt-1 text-4xl font-bold text-white">{coachMatchesCount}</p>
             )}
+            <p className="mt-2 text-sm text-gray-500">matches logged</p>
+          </Card>
+
+          <Card className="border-gray-800 transition hover:border-[#16a34a]">
+            <h2 className="text-xl font-semibold text-white">Players Coached</h2>
+            <p className="mt-2 text-sm text-gray-400">
+              Unique players that have appeared in your matches.
+            </p>
+            {loading ? (
+              <Skeleton width="4rem" height="2.5rem" className="mt-1" />
+            ) : (
+              <p className="mt-1 text-4xl font-bold text-white">{uniquePlayersCount}</p>
+            )}
+            <p className="mt-2 text-sm text-gray-500">unique players</p>
           </Card>
         </div>
       )}
@@ -202,19 +312,75 @@ function Dashboard() {
       {role === SCOUT && (
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="border-gray-800 transition hover:border-[#16a34a]">
-            <h2 className="text-xl font-semibold text-white">Search Players</h2>
+            <h2 className="text-xl font-semibold text-white">Find Players</h2>
             <p className="mt-2 text-sm text-gray-300">
-              Find players and view their complete public profiles.
+              Search and filter through verified amateur players by position, age, location and
+              more.
             </p>
             <Link to="/scout" className="mt-4 inline-block text-[#16a34a]">
-              Open scout search
+              Open Player Search
             </Link>
           </Card>
+
           <Card className="border-gray-800 transition hover:border-[#16a34a]">
-            <h2 className="text-xl font-semibold text-white">Tip</h2>
-            <p className="mt-2 text-sm text-gray-300">
-              Use filters to narrow down players by position, age, and location
+            <h2 className="text-xl font-semibold text-white">Available Players</h2>
+            <p className="mt-2 text-sm text-gray-300">Players currently open to opportunities.</p>
+            {loading ? (
+              <Skeleton width="4rem" height="2.5rem" className="mt-1" />
+            ) : (
+              <p className="mt-1 text-4xl font-bold text-white">{availablePlayersCount}</p>
+            )}
+            <p className="mt-2 text-sm text-gray-500">
+              {loading
+                ? "open to opportunities"
+                : totalPlayersCount === 0
+                  ? "No players registered yet"
+                  : "open to opportunities"}
             </p>
+          </Card>
+
+          <Card className="border-gray-800 transition hover:border-[#16a34a]">
+            <h2 className="text-xl font-semibold text-white">Player Pool</h2>
+            <p className="mt-2 text-sm text-gray-300">
+              Breakdown of available players by position.
+            </p>
+            {loading ? (
+              <div className="mt-3 space-y-2">
+                <Skeleton width="100%" height="1rem" />
+                <Skeleton width="100%" height="1rem" />
+                <Skeleton width="100%" height="1rem" />
+                <Skeleton width="100%" height="1rem" />
+              </div>
+            ) : Object.keys(positionBreakdown).length === 0 ? (
+              <p className="mt-3 text-sm text-gray-400">No players available yet.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {Object.entries(positionBreakdown).map(([pos, count]) => (
+                  <div key={pos} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">{pos}</span>
+                    <Badge label={count.toString()} color="green" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card className="border-gray-800 transition hover:border-[#16a34a]">
+            <h2 className="text-xl font-semibold text-white">Pro Tip</h2>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="text-[#16a34a]">✓</span>
+                <span className="text-sm text-gray-300">Filter by position to find the right fit</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-[#16a34a]">✓</span>
+                <span className="text-sm text-gray-300">Check match history for verified stats</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-[#16a34a]">✓</span>
+                <span className="text-sm text-gray-300">Look for players with highlight reels</span>
+              </div>
+            </div>
           </Card>
         </div>
       )}

@@ -31,4 +31,6 @@ public class PlayerProfileDto
 
     [MaxLength(500)]
     public string? AvatarUrl { get; set; }
+
+    public bool IsAvailable { get; set; } = true;
 }

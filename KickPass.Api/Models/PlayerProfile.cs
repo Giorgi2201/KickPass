@@ -13,6 +13,7 @@ public class PlayerProfile
     public string? Bio { get; set; }
     public string? HighlightUrl { get; set; }
     public string? AvatarUrl { get; set; }
+    public bool IsAvailable { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<MatchPlayer> MatchPlayers { get; set; } = new List<MatchPlayer>();
 }

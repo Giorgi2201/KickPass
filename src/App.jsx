@@ -11,7 +11,7 @@ import PublicPlayerProfile from "./pages/PublicPlayerProfile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
-import { COACH, PLAYER } from "./utils/roles";
+import { COACH, PLAYER, SCOUT } from "./utils/roles";
 
 function ErrorFallback() {
   return (
@@ -80,7 +80,7 @@ function App() {
           <Route
             path="/scout"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={[SCOUT]}>
                 <Layout>
                   <ScoutSearch />
                 </Layout>
