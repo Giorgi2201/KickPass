@@ -111,12 +111,6 @@ public class PlayerController : ControllerBase
         }
 
         var profile = await _context.PlayerProfiles.FirstOrDefaultAsync(pp => pp.UserId == userId);
-
-        if (profile is null)
-        {
-            return NotFound();
-        }
-
         return Ok(profile);
     }
 

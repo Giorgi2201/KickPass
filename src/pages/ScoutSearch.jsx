@@ -11,21 +11,19 @@ import PlayerCardSkeleton from "../components/ui/PlayerCardSkeleton";
 import api from "../services/api";
 import { getErrorMessage } from "../utils/errors";
 
-const initialFilters = {
-  position: "",
-  dominantFoot: "",
-  city: "",
-  country: "",
-  minAge: "",
-  maxAge: "",
-};
-
 const PAGE_SIZE = 12;
 
 function ScoutSearch() {
   const navigate = useNavigate();
   const [allResults, setAllResults] = useState([]);
-  const [filters, setFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState({
+    position: "",
+    dominantFoot: "",
+    city: "",
+    country: "",
+    minAge: "",
+    maxAge: "",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,13 +44,10 @@ function ScoutSearch() {
   };
 
   useEffect(() => {
-    if (debouncedFilters !== initialFilters) {
-      const params = Object.fromEntries(
-        Object.entries(debouncedFilters).filter(([, value]) => value)
-      );
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      loadPlayers(params);
-    }
+    const params = Object.fromEntries(
+      Object.entries(debouncedFilters).filter(([, value]) => value)
+    );
+    loadPlayers(params);
   }, [debouncedFilters]);
 
   const totalPages = Math.ceil(allResults.length / PAGE_SIZE);
@@ -79,7 +74,14 @@ function ScoutSearch() {
   };
 
   const handleClear = () => {
-    setFilters(initialFilters);
+    setFilters({
+      position: "",
+      dominantFoot: "",
+      city: "",
+      country: "",
+      minAge: "",
+      maxAge: "",
+    });
     setCurrentPage(1);
   };
 

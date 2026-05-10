@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import { getErrorMessage } from "../../utils/errors";
+import useDebounce from "../../hooks/useDebounce";
 
 function PlayerSearchInput({ onSelect, selectedPlayer }) {
   const { addToast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [filteredPlayers, setFilteredPlayers] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,14 +27,14 @@ function PlayerSearchInput({ onSelect, selectedPlayer }) {
   }, []);
 
   useEffect(() => {
-    if (searchTerm.length >= 2) {
+    if (debouncedSearch.length >= 2) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(true);
       api
         .get("/players/search")
         .then((response) => {
           const filtered = response.data.filter((player) =>
-            player.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+            player.fullName.toLowerCase().includes(debouncedSearch.toLowerCase())
           );
           setFilteredPlayers(filtered);
           setShowDropdown(true);
@@ -48,7 +50,7 @@ function PlayerSearchInput({ onSelect, selectedPlayer }) {
       setFilteredPlayers([]);
       setShowDropdown(false);
     }
-  }, [searchTerm]);
+  }, [debouncedSearch]);
 
   const handleChange = (event) => {
     setSearchTerm(event.target.value);

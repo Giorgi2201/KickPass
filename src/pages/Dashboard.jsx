@@ -30,15 +30,16 @@ function Dashboard() {
         if (meResponse.data.role === PLAYER) {
           try {
             const profileResponse = await api.get("/players/profile/me");
-            setPlayerProfile(profileResponse.data);
-            setPlayerProfileMissing(false);
-          } catch (profileError) {
-            if (profileError.response?.status === 404) {
+            const profile = profileResponse.data;
+            if (profile) {
+              setPlayerProfile(profile);
+              setPlayerProfileMissing(false);
+            } else {
               setPlayerProfile(null);
               setPlayerProfileMissing(true);
-            } else {
-              setError("Failed to load player stats.");
             }
+          } catch {
+            setError("Failed to load player stats.");
           }
         }
 

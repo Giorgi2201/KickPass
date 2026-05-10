@@ -43,24 +43,25 @@ function PlayerProfile() {
     try {
       const response = await api.get("/players/profile/me");
       const profile = response.data;
-      setProfileData(profile);
-      setFormData({
-        position: profile.position || initialForm.position,
-        dominantFoot: profile.dominantFoot || initialForm.dominantFoot,
-        age: profile.age?.toString() || initialForm.age,
-        city: profile.city || initialForm.city,
-        country: profile.country || initialForm.country,
-        bio: profile.bio || initialForm.bio,
-        highlightUrl: profile.highlightUrl || initialForm.highlightUrl,
-        avatarUrl: profile.avatarUrl || initialForm.avatarUrl,
-      });
-      setProfileExists(true);
-    } catch (error) {
-      if (error.response?.status === 404) {
+      if (!profile) {
         setProfileExists(false);
+        setProfileData(null);
       } else {
-        setGeneralError(getErrorMessage(error, "Failed to load profile."));
+        setProfileData(profile);
+        setFormData({
+          position: profile.position || initialForm.position,
+          dominantFoot: profile.dominantFoot || initialForm.dominantFoot,
+          age: profile.age?.toString() || initialForm.age,
+          city: profile.city || initialForm.city,
+          country: profile.country || initialForm.country,
+          bio: profile.bio || initialForm.bio,
+          highlightUrl: profile.highlightUrl || initialForm.highlightUrl,
+          avatarUrl: profile.avatarUrl || initialForm.avatarUrl,
+        });
+        setProfileExists(true);
       }
+    } catch (error) {
+      setGeneralError(getErrorMessage(error, "Failed to load profile."));
     } finally {
       setLoading(false);
     }

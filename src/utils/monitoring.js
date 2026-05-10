@@ -1,10 +1,22 @@
 import * as Sentry from "@sentry/react";
 
-export function initMonitoring() {
-  const dsn = import.meta.env.VITE_SENTRY_DSN;
+let sentryEnabled = false;
 
-  if (!dsn) {
-    // Silently skip in local dev if DSN is not configured
+function isConfiguredSentryDsn(raw) {
+  if (!raw || typeof raw !== "string") return false;
+  const dsn = raw.trim();
+  if (!dsn || dsn === "your_sentry_dsn_here") return false;
+  try {
+    const u = new URL(dsn);
+    return u.protocol === "https:" && u.username.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+export function initMonitoring() {
+  const dsn = import.meta.env.VITE_SENTRY_DSN?.trim() ?? "";
+  if (!isConfiguredSentryDsn(dsn)) {
     return;
   }
 
@@ -13,8 +25,10 @@ export function initMonitoring() {
     environment: import.meta.env.MODE,
     tracesSampleRate: 0.2,
   });
+  sentryEnabled = true;
 }
 
 export function captureError(error, context) {
+  if (!sentryEnabled) return;
   Sentry.captureException(error, { extra: context });
 }
