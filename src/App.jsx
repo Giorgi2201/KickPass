@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import PlayerProfile from "./pages/PlayerProfile";
 import CoachDashboard from "./pages/CoachDashboard";
+import ClubHub from "./pages/coach/ClubHub";
 import ScoutSearch from "./pages/ScoutSearch";
 import PublicPlayerProfile from "./pages/PublicPlayerProfile";
 import Login from "./pages/Login";
@@ -73,6 +74,16 @@ function App() {
               <ProtectedRoute allowedRoles={[COACH]}>
                 <Layout>
                   <CoachDashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/club"
+            element={
+              <ProtectedRoute allowedRoles={[COACH]}>
+                <Layout>
+                  <ClubHub />
                 </Layout>
               </ProtectedRoute>
             }

@@ -53,22 +53,9 @@ function Dashboard() {
 
         if (meResponse.data.role === COACH) {
           try {
-            const matchesResponse = await api.get("/matches/my");
-            const matches = matchesResponse.data;
-            setCoachMatchesCount(matches.length);
-
-            if (matches.length === 0) {
-              setUniquePlayersCount(0);
-            } else {
-              const matchDetails = await Promise.all(
-                matches.map((m) => api.get(`/matches/${m.id}`))
-              );
-              const allPlayerIds = matchDetails.flatMap((res) =>
-                res.data.players.map((p) => p.playerProfileId)
-              );
-              const uniqueCount = new Set(allPlayerIds).size;
-              setUniquePlayersCount(uniqueCount);
-            }
+            const statsResponse = await api.get("/matches/my/stats");
+            setCoachMatchesCount(statsResponse.data.totalMatches);
+            setUniquePlayersCount(statsResponse.data.uniquePlayers);
           } catch {
             setError("Failed to load coach stats.");
           }

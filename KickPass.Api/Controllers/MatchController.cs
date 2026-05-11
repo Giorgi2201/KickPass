@@ -168,6 +168,35 @@ public class MatchController : ControllerBase
         return Ok(matches);
     }
 
+    [HttpGet("my/stats")]
+    [Authorize(Roles = "Coach")]
+    public async Task<IActionResult> GetMyStats()
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var coachId))
+        {
+            return Unauthorized();
+        }
+
+        var matchIds = await _context.Matches
+            .Where(m => m.CoachId == coachId)
+            .Select(m => m.Id)
+            .ToListAsync();
+
+        var totalMatches = matchIds.Count;
+
+        var uniquePlayers = await _context.MatchPlayers
+            .Where(mp => matchIds.Contains(mp.MatchId))
+            .Select(mp => mp.PlayerProfileId)
+            .Distinct()
+            .CountAsync();
+
+        return Ok(new
+        {
+            totalMatches,
+            uniquePlayers
+        });
+    }
+
     [HttpDelete("{matchId:int}")]
     [Authorize(Roles = "Coach")]
     public async Task<IActionResult> DeleteMatch(int matchId)

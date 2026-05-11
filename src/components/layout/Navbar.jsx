@@ -20,6 +20,7 @@ function Navbar() {
     [COACH]: [
       { label: "Dashboard", path: "/dashboard" },
       { label: "Match Center", path: "/coach" },
+      { label: "My Club", path: "/club" },
     ],
     [SCOUT]: [
       { label: "Dashboard", path: "/dashboard" },

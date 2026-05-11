@@ -4,6 +4,7 @@ using KickPass.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KickPass.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260511105820_AddClubAndSquadModels")]
+    partial class AddClubAndSquadModels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -142,40 +145,6 @@ namespace KickPass.Api.Migrations
                         {
                             t.HasCheckConstraint("CK_MatchPlayers_RatingOutOfTen", "[RatingOutOfTen] >= 1 AND [RatingOutOfTen] <= 10");
                         });
-                });
-
-            modelBuilder.Entity("KickPass.Api.Models.Message", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ClubId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("SenderId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("SentAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClubId");
-
-                    b.HasIndex("SenderId");
-
-                    b.ToTable("Messages");
                 });
 
             modelBuilder.Entity("KickPass.Api.Models.PlayerProfile", b =>
@@ -331,25 +300,6 @@ namespace KickPass.Api.Migrations
                     b.Navigation("PlayerProfile");
                 });
 
-            modelBuilder.Entity("KickPass.Api.Models.Message", b =>
-                {
-                    b.HasOne("KickPass.Api.Models.Club", "Club")
-                        .WithMany("Messages")
-                        .HasForeignKey("ClubId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("KickPass.Api.Models.User", "Sender")
-                        .WithMany()
-                        .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Club");
-
-                    b.Navigation("Sender");
-                });
-
             modelBuilder.Entity("KickPass.Api.Models.PlayerProfile", b =>
                 {
                     b.HasOne("KickPass.Api.Models.User", "User")
@@ -382,8 +332,6 @@ namespace KickPass.Api.Migrations
 
             modelBuilder.Entity("KickPass.Api.Models.Club", b =>
                 {
-                    b.Navigation("Messages");
-
                     b.Navigation("SquadMembers");
                 });
 

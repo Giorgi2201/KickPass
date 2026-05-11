@@ -16,4 +16,5 @@ public class PlayerProfile
     public bool IsAvailable { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<MatchPlayer> MatchPlayers { get; set; } = new List<MatchPlayer>();
+    public ICollection<SquadMember> SquadMembers { get; set; } = new List<SquadMember>();
 }
